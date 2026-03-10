@@ -1,5 +1,7 @@
 # MailClaw
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/missuo/mailclaw)
+
 A Cloudflare Workers-based email inbox service. Receives all emails sent to `*@yourdomain.com` via catch-all Email Routing, stores them in D1, and exposes a token-protected REST API for reading and searching emails.
 
 Built to be consumed by AI agents (Claude Code, OpenClaw, etc.) for automated email processing.
@@ -241,7 +243,7 @@ Once installed, you can use natural language like:
 - "Check my recent emails"
 - "Search emails from partner@company.com"
 - "Read the latest email about partnership"
-- "Show me all emails sent to bd@uid.si this week"
+- "Show me all emails sent to tcook@apple.com this week"
 
 The skill will automatically use the MailClaw API to fetch and display results.
 
