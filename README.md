@@ -272,7 +272,7 @@ mailclaw delete clx123abc
 
 ### Prebuilt binaries
 
-GitHub Releases can now publish prebuilt CLI archives for:
+GitHub Releases can now publish prebuilt CLI binaries for:
 
 - `x86_64-unknown-linux-gnu`
 - `aarch64-unknown-linux-gnu`
@@ -280,11 +280,16 @@ GitHub Releases can now publish prebuilt CLI archives for:
 - `aarch64-apple-darwin`
 - `x86_64-pc-windows-msvc`
 
-If you prefer not to build locally, download the archive for your platform from the latest release and put `mailclaw` on your `PATH`.
+If you prefer not to build locally, download the binary for your platform from the latest release, rename it if needed, and put it on your `PATH`. The uploaded asset names follow this pattern:
+
+```text
+mailclaw-v1.0.0-<target>
+mailclaw-v1.0.0-<target>.exe
+```
 
 ### Release automation
 
-Pushing a tag like `v0.1.0` triggers `.github/workflows/release-cli.yml`, which creates a GitHub Release and uploads the compiled CLI archives and SHA-256 checksum files automatically.
+Pushing a tag like `v0.1.0` triggers `.github/workflows/release-cli.yml`, which creates a GitHub Release and uploads the compiled CLI binaries directly.
 
 ```bash
 git tag v0.1.0

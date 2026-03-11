@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 permissions:
   contents: write
 
@@ -13,11 +16,14 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: taiki-e/create-gh-release-action@v1
-        with:
-          title: $version
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create release if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
+            gh release create "${GITHUB_REF_NAME}" \
+              --verify-tag \
+              --title "${GITHUB_REF_NAME}"
 
   upload-binaries:
     name: Upload ${{ matrix.target }}
@@ -29,17 +35,22 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            bin_suffix: ""
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             setup-cross: true
-          - os: macos-13
+            bin_suffix: ""
+          - os: macos-15-intel
             target: x86_64-apple-darwin
-          - os: macos-latest
+            bin_suffix: ""
+          - os: macos-15
             target: aarch64-apple-darwin
+            bin_suffix: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            bin_suffix: ".exe"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Linux cross toolchain
         if: matrix.setup-cross
@@ -48,14 +59,29 @@ jobs:
           target: ${{ matrix.target }}
           runner: none
 
-      - uses: taiki-e/upload-rust-binary-action@v1
-        with:
-          bin: mailclaw
-          target: ${{ matrix.target }}
-          include: README.md
-          leading-dir: true
-          archive: mailclaw-$tag-$target
-          checksum: sha256
-          tar: unix
-          zip: windows
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build release binary
+        shell: bash
+        run: cargo build --release --locked --target "${{ matrix.target }}"
+
+      - name: Prepare release asset
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+          TARGET: ${{ matrix.target }}
+          BIN_SUFFIX: ${{ matrix.bin_suffix }}
+        run: |
+          mkdir -p dist
+          cp "target/${TARGET}/release/mailclaw${BIN_SUFFIX}" \
+             "dist/mailclaw-${TAG}-${TARGET}${BIN_SUFFIX}"
+
+      - name: Upload release asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          TARGET: ${{ matrix.target }}
+          BIN_SUFFIX: ${{ matrix.bin_suffix }}
+        run: |
+          gh release upload "${TAG}" \
+            "dist/mailclaw-${TAG}-${TARGET}${BIN_SUFFIX}" \
+            --clobber
