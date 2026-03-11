@@ -226,6 +226,71 @@ No authentication required.
 curl "https://mailclaw.example.com/api/health"
 ```
 
+## Rust CLI
+
+MailClaw also ships with a Rust binary CLI named `mailclaw`. It wraps the same API endpoints and stores local credentials in `~/.mailclaw/config.json`.
+
+### Build or install
+
+```bash
+# Install into ~/.cargo/bin/mailclaw
+cargo install --path .
+
+# Or build a local release binary
+cargo build --release
+./target/release/mailclaw --help
+```
+
+### Configure
+
+```bash
+mailclaw config set \
+  --host "https://mailclaw.example.com" \
+  --api-token "your-api-token-here"
+
+mailclaw health
+```
+
+### Common commands
+
+```bash
+# List recent email metadata
+mailclaw list --limit 10
+
+# Search emails and return machine-readable JSON
+mailclaw list --q partnership --json
+
+# Export full content
+mailclaw export --from partner@company.com --limit 5 --json
+
+# Read one email
+mailclaw get clx123abc
+
+# Delete one email
+mailclaw delete clx123abc
+```
+
+### Prebuilt binaries
+
+GitHub Releases can now publish prebuilt CLI archives for:
+
+- `x86_64-unknown-linux-gnu`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-apple-darwin`
+- `aarch64-apple-darwin`
+- `x86_64-pc-windows-msvc`
+
+If you prefer not to build locally, download the archive for your platform from the latest release and put `mailclaw` on your `PATH`.
+
+### Release automation
+
+Pushing a tag like `v0.1.0` triggers `.github/workflows/release-cli.yml`, which creates a GitHub Release and uploads the compiled CLI archives and SHA-256 checksum files automatically.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## AI Agent Skills
 
 MailClaw ships with a built-in [skill](https://agentskills.io) that lets AI agents (Claude Code, OpenClaw, etc.) read and manage your inbox.
@@ -236,7 +301,9 @@ MailClaw ships with a built-in [skill](https://agentskills.io) that lets AI agen
 npx skills add https://github.com/missuo/mailclaw
 ```
 
-On first use, the skill will ask you for your **MailClaw Host** and **API Token**, then save them to `~/.mailclaw/config.json` for future sessions.
+Build or install the `mailclaw` binary first. The skill now shells out to the local `mailclaw` CLI instead of calling `curl` directly.
+
+On first use, the skill will ask you for your **MailClaw Host** and **API Token**, then save them through `mailclaw config set` to `~/.mailclaw/config.json` for future sessions.
 
 Once installed, you can use natural language like:
 
@@ -245,11 +312,11 @@ Once installed, you can use natural language like:
 - "Read the latest email about partnership"
 - "Show me all emails sent to tcook@apple.com this week"
 
-The skill will automatically use the MailClaw API to fetch and display results.
+The skill will automatically use the local `mailclaw` CLI to fetch and display results.
 
 ### Add to other AI agents
 
-The skill definition is located at `skills/mailclaw/SKILL.md`. You can copy or adapt it for any AI agent framework that supports markdown-based skill definitions.
+The skill definition is located at `skills/mailclaw/SKILL.md`. You can copy or adapt it for any AI agent framework that supports markdown-based skill definitions, or invoke the `mailclaw` CLI directly.
 
 ## Limitations
 

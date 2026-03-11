@@ -3,6 +3,9 @@ node_modules/
 
 # Build
 dist/
+target/
+mailclaw-*.tar.gz
+mailclaw-*.zip
 
 # Cloudflare
 .wrangler/

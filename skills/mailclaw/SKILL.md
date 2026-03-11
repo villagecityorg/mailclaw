@@ -1,101 +1,87 @@
 ---
 name: mailclaw
-description: Read, search, and manage emails from the MailClaw inbox API. Use when the user asks to check emails, read messages, search inbox, find emails from a sender, or review recent correspondence.
-allowed-tools: Bash(curl *), Read, Write, WebFetch
+description: Read, search, and manage emails from the MailClaw inbox via the local CLI. Use when the user asks to check emails, read messages, search inbox, find emails from a sender, or review recent correspondence.
+allowed-tools: Bash(mailclaw *)
 ---
 
-# MailClaw - Email Inbox API
+# MailClaw - Binary CLI
 
-You have access to the MailClaw email inbox API. Use it to read, search, and manage emails.
+You have access to the local `mailclaw` binary CLI. Use it to read, search, and manage emails. Do not call the MailClaw HTTP API directly with `curl` unless the user explicitly asks for raw API requests.
+
+## Prerequisite
+
+Before doing anything else, verify the CLI exists:
+
+```bash
+mailclaw --version
+```
+
+- If `mailclaw` is not installed, tell the user they need to build or install it first, for example with `cargo install --path .` from the MailClaw repo.
+- Once the binary is available, use it for all inbox operations.
 
 ## Configuration
 
-Before making any API calls, read the config file at `~/.mailclaw/config.json`:
+Use the CLI to manage config instead of reading or writing `~/.mailclaw/config.json` manually.
 
-```json
-{
-  "host": "https://mailclaw.example.com",
-  "api_token": "your-api-token-here"
-}
+```bash
+# Save credentials
+mailclaw config set --host "https://mailclaw.example.com" --api-token "your-api-token-here"
+
+# Show current config state
+mailclaw config show --json
+
+# Verify the configured host is reachable
+mailclaw health --json
 ```
 
-- If the file does not exist or is missing fields, ask the user to provide their **MailClaw Host** (e.g., `https://mailclaw.example.com`) and **API Token**.
-- Once the user provides them, create `~/.mailclaw/config.json` with the values and proceed.
-- All `/api/emails*` endpoints require the header: `Authorization: Bearer <api_token>`
+- If config is missing, ask the user to provide their **MailClaw Host** and **API Token**, then save them with `mailclaw config set`.
+- The CLI also supports global overrides `--host <HOST>` and `--api-token <TOKEN>`, but prefer persisted config unless the user wants a one-off override.
 
-## Available Endpoints
+## Available Commands
 
 ### List emails (metadata only)
 
-```
-GET <host>/api/emails
+```bash
+mailclaw list [--limit N] [--offset N] [--from sender@example.com] [--to inbox@example.com] [--q keyword] [--after 2026-03-01] [--before 2026-03-11] [--json]
 ```
 
 Returns email summaries without body content. Use this for overview and browsing.
 
-Query parameters:
-- `limit` (number, default 20, max 100) — Page size
-- `offset` (number, default 0) — Pagination offset
-- `from` (string) — Filter by sender address (exact match)
-- `to` (string) — Filter by recipient address (exact match)
-- `q` (string) — Search keyword in subject and body
-- `after` (string) — Emails after this date (ISO 8601 like `2026-03-01` or Unix timestamp)
-- `before` (string) — Emails before this date (ISO 8601 or Unix timestamp)
-
-All filter parameters can be combined.
-
 ### Export emails (with full content)
 
-```
-GET <host>/api/emails/export
+```bash
+mailclaw export [same filters as list] [--json]
 ```
 
-Same parameters as list, but response includes `text_content` and `html_content`. Use this when the user wants to read email bodies.
+Returns full emails including `text_content` and `html_content`. Use this when the user wants body content for multiple emails.
 
 ### Get single email
 
-```
-GET <host>/api/emails/:id
+```bash
+mailclaw get <email_id> [--json]
 ```
 
-Returns full email content including body. Use after identifying an email from the list.
+Returns one full email, including body content.
 
 ### Delete email
 
-```
-DELETE <host>/api/emails/:id
+```bash
+mailclaw delete <email_id> [--json]
 ```
 
 Permanently deletes an email. Always confirm with the user before deleting.
 
 ### Health check
 
+```bash
+mailclaw health [--json]
 ```
-GET <host>/api/health
-```
 
-No authentication required. Use this to verify the host is correct during initial setup.
+Use this to verify the configured host is correct during setup.
 
-## Response Format
+## JSON Output
 
-All responses follow this structure:
-
-```json
-// Success
-{
-  "success": true,
-  "data": { ... }
-}
-
-// Error
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable message"
-  }
-}
-```
+When you pass `--json`, the CLI prints the payload directly, not the original HTTP `{ success, data }` envelope.
 
 ### Email object (list)
 
@@ -111,7 +97,7 @@ All responses follow this structure:
 }
 ```
 
-### Email object (export / detail)
+### Email object (export / get)
 
 Same as above, plus:
 ```json
@@ -134,29 +120,27 @@ Same as above, plus:
 
 ## Usage Examples
 
-Replace `$HOST` and `$TOKEN` with values from `~/.mailclaw/config.json`.
-
 ```bash
 # List all recent emails
-curl -s -H "Authorization: Bearer $TOKEN" "$HOST/api/emails" | jq .
+mailclaw list --json
 
 # Search emails containing "partnership"
-curl -s -H "Authorization: Bearer $TOKEN" "$HOST/api/emails?q=partnership" | jq .
+mailclaw list --q partnership --json
 
 # Filter by recipient and sender
-curl -s -H "Authorization: Bearer $TOKEN" "$HOST/api/emails?to=bd@example.com&from=partner@company.com" | jq .
+mailclaw list --to bd@example.com --from partner@company.com --json
 
 # Get emails from the last 7 days
-curl -s -H "Authorization: Bearer $TOKEN" "$HOST/api/emails?after=2026-03-03" | jq .
+mailclaw list --after 2026-03-03 --json
 
 # Export emails with full content
-curl -s -H "Authorization: Bearer $TOKEN" "$HOST/api/emails/export?limit=10" | jq .
+mailclaw export --limit 10 --json
 
 # Read a specific email
-curl -s -H "Authorization: Bearer $TOKEN" "$HOST/api/emails/clx123abc" | jq .
+mailclaw get clx123abc --json
 
 # Delete an email
-curl -s -X DELETE -H "Authorization: Bearer $TOKEN" "$HOST/api/emails/clx123abc" | jq .
+mailclaw delete clx123abc --json
 ```
 
 ## Limitations
@@ -165,12 +149,12 @@ MailClaw is **receive-only**. Replying to or sending emails is not supported. If
 
 ## Guidelines
 
-1. **Read config first** — Always read `~/.mailclaw/config.json` before making API calls. If it doesn't exist, ask the user for host and token, then save the config.
-2. **Verify on first use** — After saving a new config, call `GET <host>/api/health` to verify the host is reachable.
-3. **Start with list** — Use `GET /api/emails` first to get an overview, then drill into specific emails with `GET /api/emails/:id`.
-4. **Use filters** — Always apply relevant filters (`from`, `to`, `q`, date range) rather than fetching everything.
-5. **Prefer text_content** — When displaying email content to the user, prefer `text_content` over `html_content` for readability.
-6. **Pagination** — For large inboxes, paginate through results using `limit` and `offset`.
-7. **Confirm deletes** — Always ask the user for confirmation before deleting emails.
-8. **Date formatting** — The `received_at` field is a Unix timestamp in seconds. Convert it to a human-readable format when presenting to the user.
-9. **Pipe to jq** — When using curl in Bash, pipe output through `jq .` for readable formatting.
+1. **Use the CLI, not curl** — All inbox operations should go through `mailclaw`.
+2. **Check config through the CLI** — Use `mailclaw config show --json` and `mailclaw config set ...`; do not manually edit the config file unless the user explicitly asks.
+3. **Verify on first use** — After saving a new config, call `mailclaw health --json`.
+4. **Start with list** — Use `mailclaw list` first to get an overview, then drill into specific emails with `mailclaw get <id>`.
+5. **Use filters** — Always apply relevant filters (`from`, `to`, `q`, date range) rather than fetching everything.
+6. **Prefer text_content** — When displaying email content to the user, prefer `text_content` over `html_content` for readability.
+7. **Pagination** — For large inboxes, paginate through results using `limit` and `offset`.
+8. **Confirm deletes** — Always ask the user for confirmation before deleting emails.
+9. **Date formatting** — The `received_at` field is a Unix timestamp in seconds. Convert it to a human-readable format when presenting to the user.
