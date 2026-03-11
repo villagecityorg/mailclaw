@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     time::Duration,
 };
 
@@ -473,10 +473,33 @@ struct DeleteResponse {
 }
 
 fn config_path() -> Result<PathBuf> {
-    let home = std::env::var("HOME").context("HOME is not set")?;
-    Ok(Path::new(&home)
-        .join(CONFIG_DIR_NAME)
-        .join(CONFIG_FILE_NAME))
+    let home = user_home_dir()?;
+    Ok(home.join(CONFIG_DIR_NAME).join(CONFIG_FILE_NAME))
+}
+
+fn user_home_dir() -> Result<PathBuf> {
+    if let Some(home) = std::env::var_os("HOME") {
+        return Ok(PathBuf::from(home));
+    }
+
+    #[cfg(windows)]
+    {
+        if let Some(profile) = std::env::var_os("USERPROFILE") {
+            return Ok(PathBuf::from(profile));
+        }
+
+        let home_drive = std::env::var_os("HOMEDRIVE");
+        let home_path = std::env::var_os("HOMEPATH");
+        if let (Some(drive), Some(path)) = (home_drive, home_path) {
+            return Ok(PathBuf::from(format!(
+                "{}{}",
+                drive.to_string_lossy(),
+                path.to_string_lossy()
+            )));
+        }
+    }
+
+    bail!("could not determine the user home directory")
 }
 
 fn load_stored_config() -> Result<Option<StoredConfig>> {

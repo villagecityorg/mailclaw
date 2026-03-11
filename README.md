@@ -306,7 +306,7 @@ MailClaw ships with a built-in [skill](https://agentskills.io) that lets AI agen
 npx skills add https://github.com/missuo/mailclaw
 ```
 
-Build or install the `mailclaw` binary first. The skill now shells out to the local `mailclaw` CLI instead of calling `curl` directly.
+The skill now shells out to the local `mailclaw` CLI instead of calling `curl` directly. If the CLI is missing, the skill should install the latest release binary automatically by default on macOS, Linux, and Windows.
 
 On first use, the skill will ask you for your **MailClaw Host** and **API Token**, then save them through `mailclaw config set` to `~/.mailclaw/config.json` for future sessions.
 
