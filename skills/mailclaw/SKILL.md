@@ -1,14 +1,14 @@
 ---
 name: mailclaw
 description: Read, search, and manage emails from the MailClaw inbox via the local CLI. Use when the user asks to check emails, read messages, search inbox, find emails from a sender, or review recent correspondence.
-allowed-tools: Bash(mailclaw *), Bash(curl *), Bash(python3 *)
+allowed-tools: Bash(mailclaw *), Bash(brew *), Bash(curl *), Bash(wget *), Bash(chmod *), Bash(uname *)
 ---
 
 # MailClaw - Binary CLI
 
 You have access to the local `mailclaw` binary CLI. Use it to read, search, and manage emails. Do not call the MailClaw HTTP API directly with `curl` unless the user explicitly asks for raw API requests.
 
-By default, if `mailclaw` is missing, install the latest released binary automatically from GitHub Releases and then continue the task.
+By default, if `mailclaw` is missing, install it automatically and then continue the task.
 
 ## Prerequisite
 
@@ -18,94 +18,40 @@ Before doing anything else, verify the CLI exists:
 mailclaw --version
 ```
 
-- If `mailclaw` is missing, install the latest release binary automatically instead of asking the user to build it manually.
-- Prefer GitHub Releases over local source builds unless the user explicitly asks to build from source.
+- If `mailclaw` is missing on macOS, install it with Homebrew.
+- If `mailclaw` is missing on Linux, download the latest release binary and install it to `/usr/local/bin/mailclaw`.
+- On Windows, do not guess an install flow here. Ask the user to install the CLI manually or provide the binary path.
 - Once the binary is available, use it for all inbox operations.
 
 ### Automatic install flow
 
-Use `python3` for installation so the same process works on macOS, Linux, and Windows.
-
-Platform mapping:
-- `Darwin` + `arm64` -> `aarch64-apple-darwin`
-- `Darwin` + `x86_64` -> `x86_64-apple-darwin`
-- `Linux` + `aarch64` or `arm64` -> `aarch64-unknown-linux-gnu`
-- `Linux` + `x86_64` -> `x86_64-unknown-linux-gnu`
-- `Windows` + `AMD64` or `x86_64` -> `x86_64-pc-windows-msvc`
-
-Install behavior:
-- Download the latest release metadata from `https://api.github.com/repos/missuo/mailclaw/releases/latest`.
-- Download the matching binary asset for the detected target.
-- Install to a user-writable bin directory:
-  - macOS/Linux: `~/.local/bin/mailclaw`
-  - Windows: `~/.local/bin/mailclaw.exe`
-- On Unix, set mode `0755`.
-- If the install directory is not already on `PATH`, call the installed binary by absolute path for the current task.
-
-Recommended installation command:
+1. Detect the platform with `uname -s` and `uname -m`.
+2. If the system is `Darwin`, install with Homebrew:
 
 ```bash
-python3 - <<'PY'
-import json
-import os
-import pathlib
-import platform
-import shutil
-import stat
-import sys
-import tempfile
-import urllib.request
-
-API_URL = "https://api.github.com/repos/missuo/mailclaw/releases/latest"
-
-system = platform.system()
-machine = platform.machine().lower()
-target_map = {
-    ("Darwin", "arm64"): ("aarch64-apple-darwin", ""),
-    ("Darwin", "x86_64"): ("x86_64-apple-darwin", ""),
-    ("Linux", "aarch64"): ("aarch64-unknown-linux-gnu", ""),
-    ("Linux", "arm64"): ("aarch64-unknown-linux-gnu", ""),
-    ("Linux", "x86_64"): ("x86_64-unknown-linux-gnu", ""),
-    ("Windows", "amd64"): ("x86_64-pc-windows-msvc", ".exe"),
-    ("Windows", "x86_64"): ("x86_64-pc-windows-msvc", ".exe"),
-}
-
-target_info = target_map.get((system, machine))
-if not target_info:
-    raise SystemExit(f"unsupported platform: {system} {machine}")
-
-target, ext = target_info
-with urllib.request.urlopen(API_URL) as response:
-    release = json.load(response)
-
-tag = release["tag_name"]
-asset_name = f"mailclaw-{tag}-{target}{ext}"
-asset = next((a for a in release.get("assets", []) if a.get("name") == asset_name), None)
-if not asset:
-    raise SystemExit(f"release asset not found: {asset_name}")
-
-home = pathlib.Path.home()
-bin_dir = home / ".local" / "bin"
-bin_dir.mkdir(parents=True, exist_ok=True)
-dest = bin_dir / f"mailclaw{ext}"
-
-with tempfile.NamedTemporaryFile(delete=False) as tmp:
-    tmp_path = pathlib.Path(tmp.name)
-
-with urllib.request.urlopen(asset["browser_download_url"]) as response, tmp_path.open("wb") as out:
-    shutil.copyfileobj(response, out)
-
-tmp_path.replace(dest)
-if ext == "":
-    dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
-print(dest)
-PY
+brew tap owo-network/brew
+brew install owo-network/brew/mailclaw
 ```
 
-- Capture the printed installed path and use that binary directly if `mailclaw` is still not on `PATH`.
-- If the platform is unsupported or the download fails, then tell the user and fall back to asking them to build from source.
-- Reuse the installed latest-release binary on future invocations unless the user asks for a specific version or a source build.
+3. If the system is `Linux`, fetch the latest release tag with `curl`, map the architecture to the release target, download the binary with `wget`, put it in `/usr/local/bin/mailclaw`, and mark it executable:
+
+```bash
+ARCH="$(uname -m)"
+TAG="$(curl -fsSL https://api.github.com/repos/missuo/mailclaw/releases/latest | sed -n 's/.*\"tag_name\": *\"\\([^\"]*\\)\".*/\\1/p' | head -n1)"
+
+case "$ARCH" in
+  x86_64) TARGET="x86_64-unknown-linux-gnu" ;;
+  aarch64|arm64) TARGET="aarch64-unknown-linux-gnu" ;;
+  *) echo "Unsupported Linux architecture: $ARCH" >&2; exit 1 ;;
+esac
+
+wget -O /usr/local/bin/mailclaw "https://github.com/missuo/mailclaw/releases/download/${TAG}/mailclaw-${TAG}-${TARGET}"
+chmod +x /usr/local/bin/mailclaw
+```
+
+4. If writing to `/usr/local/bin` fails, ask the user for permission or tell them they need elevated privileges for the install.
+5. If the platform is Windows, ask the user to install the CLI manually or provide the binary path.
+6. Reuse the installed CLI on future invocations unless the user asks for a specific version or a source build.
 
 ## Configuration
 
@@ -124,7 +70,7 @@ mailclaw health --json
 
 - If config is missing, ask the user to provide their **MailClaw Host** and **API Token**, then save them with `mailclaw config set`.
 - The CLI also supports global overrides `--host <HOST>` and `--api-token <TOKEN>`, but prefer persisted config unless the user wants a one-off override.
-- On Windows, prefer the installed absolute path such as `C:\Users\<user>\.local\bin\mailclaw.exe` if `mailclaw` is not yet on `PATH`.
+- On Windows, ask the user for the CLI path if `mailclaw` is not already available on `PATH`.
 
 ## Available Commands
 
@@ -238,7 +184,7 @@ MailClaw is **receive-only**. Replying to or sending emails is not supported. If
 
 ## Guidelines
 
-1. **Use the CLI, not curl** — All inbox operations should go through `mailclaw` or the installed absolute binary path.
+1. **Use the CLI, not curl** — All inbox operations should go through `mailclaw`.
 2. **Check config through the CLI** — Use `mailclaw config show --json` and `mailclaw config set ...`; do not manually edit the config file unless the user explicitly asks.
 3. **Verify on first use** — After saving a new config, call `mailclaw health --json`.
 4. **Start with list** — Use `mailclaw list` first to get an overview, then drill into specific emails with `mailclaw get <id>`.
