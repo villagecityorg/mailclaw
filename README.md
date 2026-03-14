@@ -303,7 +303,7 @@ MailClaw ships with a built-in [skill](https://agentskills.io) that lets AI agen
 ### Add to Claude Code
 
 ```bash
-npx skills add https://github.com/missuo/mailclaw
+npx skills add missuo/mailclaw
 ```
 
 The skill now shells out to the local `mailclaw` CLI instead of calling `curl` directly. If the CLI is missing, the skill should install the latest release binary automatically by default on macOS, Linux, and Windows.
