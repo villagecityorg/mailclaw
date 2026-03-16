@@ -2,7 +2,7 @@
 
 ## Overview
 
-MailClaw is a Cloudflare Workers-based email inbox service that receives emails via Cloudflare Email Routing (catch-all), stores them in D1, and exposes a token-protected REST API for reading, searching, and exporting emails. Designed to be consumed by AI agents (e.g., Claude Code Skills, OpenClaw) for automated email processing.
+MailClaw is a Cloudflare Workers-based email inbox service that receives emails via Cloudflare Email Routing (catch-all), stores them in D1, and exposes a token-protected REST API for reading, searching, and exporting emails. Ships with a Rust CLI and a Claude Code skill. Designed to be consumed by AI agents (e.g., Claude Code Skills, OpenClaw) for automated email processing.
 
 ## Cloudflare Services
 
@@ -159,6 +159,8 @@ Health check endpoint (no auth required).
 
 ## Technology Stack
 
+### Worker (TypeScript)
+
 - **Runtime**: Cloudflare Workers
 - **Framework**: Hono.js
 - **Language**: TypeScript
@@ -169,30 +171,47 @@ Health check endpoint (no auth required).
 - **Package Manager**: Bun
 - **Linter/Formatter**: Biome
 
+### CLI (Rust)
+
+- **Language**: Rust
+- **Argument Parsing**: clap
+- **HTTP Client**: reqwest
+- **Serialization**: serde + serde_json
+- **Date/Time**: chrono
+
 ## Project Structure
 
 ```
-src/
-├── index.ts              # Worker entry point (email, fetch)
-├── app.ts                # Hono app setup with auth middleware
+src/                                # Cloudflare Worker
+├── index.ts                        # Worker entry point (email, fetch)
+├── app.ts                          # Hono app setup with auth middleware
 ├── middleware/
-│   └── auth.ts           # Bearer token authentication
+│   └── auth.ts                     # Bearer token authentication
 ├── routes/
-│   ├── emails.ts         # Email list, export, detail, delete
-│   └── health.ts         # Health check
+│   ├── emails.ts                   # Email list, export, detail, delete
+│   └── health.ts                   # Health check
 ├── database/
-│   └── d1.ts             # D1 query functions
+│   └── d1.ts                       # D1 query functions
 ├── handlers/
-│   └── email.ts          # Cloudflare Email Routing handler
+│   └── email.ts                    # Cloudflare Email Routing handler
 ├── utils/
-│   ├── http.ts           # Response helpers (OK, ERR)
-│   ├── mail.ts           # Email content processing
-│   └── helpers.ts        # Utility functions
-└── types.ts              # TypeScript type definitions
+│   ├── http.ts                     # Response helpers (OK, ERR)
+│   ├── mail.ts                     # Email content processing
+│   └── helpers.ts                  # Utility functions
+└── types.ts                        # TypeScript type definitions
+
+rust-cli/                           # Rust CLI
+└── main.rs                         # CLI entry (list, export, get, delete, health, config)
+
+skills/mailclaw/SKILL.md            # Claude Code skill definition
+install.sh                          # Cross-platform CLI install script (macOS + Linux)
 
 sql/
-├── schema.sql            # Table definitions
-└── indexes.sql           # Index definitions
+├── schema.sql                      # Table definitions
+└── indexes.sql                     # Index definitions
+
+.github/workflows/
+└── release-cli.yml                 # CI: build + publish CLI binaries on tag push
 ```
 
 ## Error Response Format
@@ -224,3 +243,48 @@ None required for initial setup.
 | Binding | Type | Description |
 |---|---|---|
 | `D1` | D1Database | Email storage database |
+
+## Rust CLI
+
+The `mailclaw` binary wraps the REST API for terminal and AI agent use. Credentials are stored in `~/.mailclaw/config.json`.
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `config set --host <URL> --api-token <TOKEN>` | Save credentials |
+| `config show` | Display current config |
+| `config path` | Print config file path |
+| `list` | List email metadata (paginated, filterable) |
+| `export` | Export emails with full content |
+| `get <id>` | Get single email detail |
+| `delete <id>` | Delete an email |
+| `health` | Check API reachability |
+
+All commands support `--json` for machine-readable output and `--host` / `--api-token` for one-off overrides.
+
+## Installation
+
+### install.sh
+
+Cross-platform install script (`curl -fsSL .../install.sh | bash`):
+
+- **macOS**: Installs via Homebrew (`brew tap owo-network/brew && brew install owo-network/brew/mailclaw`)
+- **Linux**: Detects architecture (x86_64 / aarch64), fetches latest release from GitHub, installs to `/usr/local/bin`
+- **Post-install**: Prompts user to configure host and API token interactively
+
+### Release Automation
+
+Pushing a `v*` tag triggers `.github/workflows/release-cli.yml`:
+
+1. Creates GitHub Release
+2. Builds CLI for 5 targets (linux x86_64/aarch64, macOS x86_64/aarch64, Windows x86_64)
+3. Uploads binaries as `mailclaw-{tag}-{target}` to the release
+
+## AI Agent Integration
+
+The `skills/mailclaw/SKILL.md` file defines a Claude Code skill that:
+
+- Auto-installs the CLI if missing (via `install.sh`)
+- Manages config through `mailclaw config set`
+- Provides natural-language access to inbox operations

@@ -270,9 +270,17 @@ mailclaw get clx123abc
 mailclaw delete clx123abc
 ```
 
+### Quick install (macOS & Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/missuo/mailclaw/main/install.sh | bash
+```
+
+On macOS the script installs via Homebrew; on Linux it downloads the latest release binary for your architecture.
+
 ### Prebuilt binaries
 
-GitHub Releases can now publish prebuilt CLI binaries for:
+GitHub Releases publish prebuilt CLI binaries for:
 
 - `x86_64-unknown-linux-gnu`
 - `aarch64-unknown-linux-gnu`
@@ -280,7 +288,7 @@ GitHub Releases can now publish prebuilt CLI binaries for:
 - `aarch64-apple-darwin`
 - `x86_64-pc-windows-msvc`
 
-If you prefer not to build locally, download the binary for your platform from the latest release, rename it if needed, and put it on your `PATH`. The uploaded asset names follow this pattern:
+If you prefer to install manually, download the binary for your platform from the latest release, rename it if needed, and put it on your `PATH`. The uploaded asset names follow this pattern:
 
 ```text
 mailclaw-v1.0.0-<target>

@@ -1,7 +1,7 @@
 ---
 name: mailclaw
 description: Read, search, and manage emails from the MailClaw inbox via the local CLI. Use when the user asks to check emails, read messages, search inbox, find emails from a sender, or review recent correspondence.
-allowed-tools: Bash(mailclaw *), Bash(brew *), Bash(curl *), Bash(wget *), Bash(chmod *), Bash(uname *)
+allowed-tools: Bash(mailclaw *), Bash(brew *), Bash(curl *), Bash(chmod *), Bash(uname *), Bash(sudo *)
 ---
 
 # MailClaw - Binary CLI
@@ -25,33 +25,18 @@ mailclaw --version
 
 ### Automatic install flow
 
-1. Detect the platform with `uname -s` and `uname -m`.
-2. If the system is `Darwin`, install with Homebrew:
+Run the official install script, which handles both macOS (Homebrew) and Linux (GitHub Releases) automatically:
 
 ```bash
-brew tap owo-network/brew
-brew install owo-network/brew/mailclaw
+curl -fsSL https://raw.githubusercontent.com/missuo/mailclaw/main/install.sh | bash
 ```
 
-3. If the system is `Linux`, fetch the latest release tag with `curl`, map the architecture to the release target, download the binary with `wget`, put it in `/usr/local/bin/mailclaw`, and mark it executable:
-
-```bash
-ARCH="$(uname -m)"
-TAG="$(curl -fsSL https://api.github.com/repos/missuo/mailclaw/releases/latest | sed -n 's/.*\"tag_name\": *\"\\([^\"]*\\)\".*/\\1/p' | head -n1)"
-
-case "$ARCH" in
-  x86_64) TARGET="x86_64-unknown-linux-gnu" ;;
-  aarch64|arm64) TARGET="aarch64-unknown-linux-gnu" ;;
-  *) echo "Unsupported Linux architecture: $ARCH" >&2; exit 1 ;;
-esac
-
-wget -O /usr/local/bin/mailclaw "https://github.com/missuo/mailclaw/releases/download/${TAG}/mailclaw-${TAG}-${TARGET}"
-chmod +x /usr/local/bin/mailclaw
-```
-
-4. If writing to `/usr/local/bin` fails, ask the user for permission or tell them they need elevated privileges for the install.
-5. If the platform is Windows, ask the user to install the CLI manually or provide the binary path.
-6. Reuse the installed CLI on future invocations unless the user asks for a specific version or a source build.
+- On macOS, the script installs via `brew tap owo-network/brew && brew install owo-network/brew/mailclaw`.
+- On Linux, the script detects the architecture, downloads the latest release binary, and installs it to `/usr/local/bin/mailclaw`.
+- After installation, the script prompts the user to configure host and API token interactively.
+- If writing to `/usr/local/bin` fails, the script will request elevated privileges automatically.
+- On Windows, do not run the install script. Ask the user to install the CLI manually or provide the binary path.
+- Reuse the installed CLI on future invocations unless the user asks for a specific version or a source build.
 
 ## Configuration
 
