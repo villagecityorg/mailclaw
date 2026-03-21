@@ -142,6 +142,31 @@ fn run() -> Result<()> {
                 println!("{}", response.message);
             }
         }
+        Command::Send(ref args) => {
+            let settings = Settings::load(&cli)?;
+            let client = ApiClient::new(settings)?;
+
+            let body = SendEmailBody {
+                from: args.from.clone(),
+                to: args.to.clone(),
+                subject: args.subject.clone(),
+                html: args.html.clone(),
+                text: args.text.clone(),
+                cc: args.cc.clone().unwrap_or_default(),
+                bcc: args.bcc.clone().unwrap_or_default(),
+                reply_to: args.reply_to.clone().unwrap_or_default(),
+            };
+
+            let response: SendEmailResponse = client.post("api/emails/send", &body, true)?;
+
+            if args.output.json {
+                print_json(&response)?;
+            } else {
+                println!("Email sent successfully");
+                println!("  id: {}", response.id);
+                println!("  provider: {}", response.provider);
+            }
+        }
     }
 
     Ok(())
@@ -182,6 +207,8 @@ enum Command {
     Get(GetArgs),
     /// Delete one email by ID.
     Delete(DeleteArgs),
+    /// Send an email via the configured provider.
+    Send(SendArgs),
 }
 
 #[derive(Subcommand, Debug)]
@@ -232,6 +259,44 @@ struct GetArgs {
 #[derive(Args, Debug)]
 struct DeleteArgs {
     id: String,
+
+    #[command(flatten)]
+    output: OutputArgs,
+}
+
+#[derive(Args, Debug)]
+struct SendArgs {
+    /// Sender email address (e.g. "Name <user@example.com>")
+    #[arg(long)]
+    from: String,
+
+    /// Recipient email address(es), can be specified multiple times
+    #[arg(long, required = true, num_args = 1..)]
+    to: Vec<String>,
+
+    /// Email subject
+    #[arg(long)]
+    subject: String,
+
+    /// HTML body content
+    #[arg(long)]
+    html: Option<String>,
+
+    /// Plain text body content
+    #[arg(long)]
+    text: Option<String>,
+
+    /// CC recipient(s), can be specified multiple times
+    #[arg(long, num_args = 1..)]
+    cc: Option<Vec<String>>,
+
+    /// BCC recipient(s), can be specified multiple times
+    #[arg(long, num_args = 1..)]
+    bcc: Option<Vec<String>>,
+
+    /// Reply-to address(es), can be specified multiple times
+    #[arg(long = "reply-to", num_args = 1..)]
+    reply_to: Option<Vec<String>>,
 
     #[command(flatten)]
     output: OutputArgs,
@@ -346,6 +411,14 @@ impl ApiClient {
         self.request(Method::GET, path, query, auth)
     }
 
+    fn post<T, B>(&self, path: &str, body: &B, auth: bool) -> Result<T>
+    where
+        T: DeserializeOwned,
+        B: Serialize,
+    {
+        self.request_with_body(Method::POST, path, body, auth)
+    }
+
     fn delete<T>(&self, path: &str, auth: bool) -> Result<T>
     where
         T: DeserializeOwned,
@@ -370,6 +443,34 @@ impl ApiClient {
             request = request.bearer_auth(self.settings.require_api_token()?);
         }
 
+        self.send_and_parse(request, &url)
+    }
+
+    fn request_with_body<T, B>(
+        &self,
+        method: Method,
+        path: &str,
+        body: &B,
+        auth: bool,
+    ) -> Result<T>
+    where
+        T: DeserializeOwned,
+        B: Serialize,
+    {
+        let url = format!("{}/{}", self.settings.host, path.trim_start_matches('/'));
+        let mut request = self.http.request(method, &url).json(body);
+
+        if auth {
+            request = request.bearer_auth(self.settings.require_api_token()?);
+        }
+
+        self.send_and_parse(request, &url)
+    }
+
+    fn send_and_parse<T>(&self, request: reqwest::blocking::RequestBuilder, url: &str) -> Result<T>
+    where
+        T: DeserializeOwned,
+    {
         let response = request
             .send()
             .with_context(|| format!("request failed: {url}"))?;
@@ -470,6 +571,29 @@ struct Email {
 #[derive(Debug, Serialize, Deserialize)]
 struct DeleteResponse {
     message: String,
+}
+
+#[derive(Debug, Serialize)]
+struct SendEmailBody {
+    from: String,
+    to: Vec<String>,
+    subject: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    cc: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    bcc: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    reply_to: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SendEmailResponse {
+    id: String,
+    provider: String,
 }
 
 fn config_path() -> Result<PathBuf> {

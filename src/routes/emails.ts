@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import * as db from "@/database/d1";
-import type { EmailFilters } from "@/types";
+import { createEmailProvider } from "@/providers";
+import type { EmailFilters, SendEmailRequest } from "@/types";
 import { parseTimestamp } from "@/utils/helpers";
 import { ERR, OK } from "@/utils/http";
 
@@ -55,6 +56,33 @@ emails.delete("/api/emails/:id", async (c) => {
 	if (error) return c.json(ERR("D1_ERROR", error.message), 500);
 	if (!deleted) return c.json(ERR("NOT_FOUND", "Email not found"), 404);
 	return c.json(OK({ message: "Email deleted" }));
+});
+
+// Send email
+emails.post("/api/emails/send", async (c) => {
+	let body: SendEmailRequest;
+	try {
+		body = await c.req.json<SendEmailRequest>();
+	} catch {
+		return c.json(ERR("INVALID_BODY", "Request body must be valid JSON"), 400);
+	}
+
+	if (!body.from || !body.to || !body.subject) {
+		return c.json(ERR("MISSING_FIELDS", "from, to, and subject are required"), 400);
+	}
+
+	if (!body.html && !body.text) {
+		return c.json(ERR("MISSING_CONTENT", "Either html or text content is required"), 400);
+	}
+
+	try {
+		const provider = createEmailProvider(c.env);
+		const result = await provider.send(body);
+		return c.json(OK(result));
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to send email";
+		return c.json(ERR("SEND_FAILED", message), 500);
+	}
 });
 
 export default emails;

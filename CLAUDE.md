@@ -37,14 +37,18 @@ src/                            # Cloudflare Worker (TypeScript)
 ├── env.d.ts                    # CloudflareBindings secret extensions
 ├── types.ts                    # TypeScript types
 ├── middleware/auth.ts          # Bearer token auth
-├── routes/emails.ts            # Email CRUD + export endpoints
+├── routes/emails.ts            # Email CRUD + export + send endpoints
 ├── routes/health.ts            # Health check
 ├── database/d1.ts              # All D1 query functions
 ├── handlers/email.ts           # Email Routing handler (parse + store)
+├── providers/                  # Email send providers
+│   ├── types.ts                # EmailProvider interface
+│   ├── resend.ts               # Resend API provider
+│   └── index.ts                # Provider factory
 └── utils/                      # http, helpers, mail processing
 
 rust-cli/                       # Rust CLI
-└── main.rs                     # CLI entry (list, export, get, delete, health, config)
+└── main.rs                     # CLI entry (list, export, get, delete, send, health, config)
 
 skills/mailclaw/SKILL.md        # Claude Code skill definition
 install.sh                      # Cross-platform CLI install script
@@ -60,6 +64,7 @@ All `/api/emails*` routes require `Authorization: Bearer <token>`.
 - `GET /api/emails/export` — List with full content (paginated)
 - `GET /api/emails/:id` — Single email detail
 - `DELETE /api/emails/:id` — Delete email
+- `POST /api/emails/send` — Send email (via Resend or Cloudflare provider)
 - `GET /api/health` — Health check (no auth)
 
 ### Filter params (for list + export)
@@ -72,7 +77,7 @@ The Rust CLI (`mailclaw`) wraps the REST API. Config is stored in `~/.mailclaw/c
 
 - `mailclaw config set --host <URL> --api-token <TOKEN>` — Save credentials
 - `mailclaw config show` — Show current config
-- `mailclaw list` / `export` / `get <id>` / `delete <id>` / `health` — API operations
+- `mailclaw list` / `export` / `get <id>` / `delete <id>` / `send` / `health` — API operations
 - All commands support `--json` for machine-readable output
 
 ### Release

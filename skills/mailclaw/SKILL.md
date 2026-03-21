@@ -1,6 +1,6 @@
 ---
 name: mailclaw
-description: Read, search, and manage emails from the MailClaw inbox via the local CLI. Use when the user asks to check emails, read messages, search inbox, find emails from a sender, or review recent correspondence.
+description: Read, search, send, and manage emails from the MailClaw inbox via the local CLI. Use when the user asks to check emails, read messages, search inbox, find emails from a sender, review recent correspondence, or send/reply to emails.
 allowed-tools: Bash(mailclaw *), Bash(brew *), Bash(curl *), Bash(chmod *), Bash(uname *), Bash(sudo *)
 ---
 
@@ -163,9 +163,13 @@ mailclaw get clx123abc --json
 mailclaw delete clx123abc --json
 ```
 
-## Limitations
+### Send email
 
-MailClaw is **receive-only**. Replying to or sending emails is not supported. If the user asks to send or reply to an email, inform them that this feature is not yet available because Cloudflare Email Sending is still in beta (waitlist). It will be supported once the feature becomes generally available.
+```bash
+mailclaw send --from "Name <sender@example.com>" --to recipient@example.com --subject "Subject" --text "Body text" [--html "<p>HTML body</p>"] [--cc cc@example.com] [--bcc bcc@example.com] [--reply-to reply@example.com] [--json]
+```
+
+Sends an email via the configured provider (Resend by default). At least `--text` or `--html` is required. Multiple `--to`, `--cc`, `--bcc`, and `--reply-to` addresses can be specified.
 
 ## Guidelines
 
