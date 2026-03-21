@@ -12,12 +12,13 @@ By default, if `mailclaw` is missing, install it automatically and then continue
 
 ## Prerequisite
 
-Before doing anything else, verify the CLI exists:
+Before doing anything else, verify the CLI exists and meets the minimum version:
 
 ```bash
 mailclaw --version
 ```
 
+- **Minimum version for send**: The `send` command requires CLI version **>= 1.0.1**. If the installed version is older, upgrade it using the install flow below before proceeding.
 - If `mailclaw` is missing on macOS, install it with Homebrew.
 - If `mailclaw` is missing on Linux, download the latest release binary and install it to `/usr/local/bin/mailclaw`.
 - On Windows, do not guess an install flow here. Ask the user to install the CLI manually or provide the binary path.
